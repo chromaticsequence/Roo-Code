@@ -1,7 +1,9 @@
+// npx jest src/components/chat/__tests__/TaskHeader.test.tsx
+
 import React from "react"
 import { render, screen } from "@testing-library/react"
 import TaskHeader from "../TaskHeader"
-import { ApiConfiguration } from "../../../../../src/shared/api"
+import { ApiConfiguration } from "@roo/shared/api"
 
 // Mock the vscode API
 jest.mock("@/utils/vscode", () => ({
@@ -10,8 +12,13 @@ jest.mock("@/utils/vscode", () => ({
 	},
 }))
 
+// Mock the VSCodeBadge component
+jest.mock("@vscode/webview-ui-toolkit/react", () => ({
+	VSCodeBadge: ({ children }: { children: React.ReactNode }) => <div data-testid="vscode-badge">{children}</div>,
+}))
+
 // Mock the ExtensionStateContext
-jest.mock("../../../context/ExtensionStateContext", () => ({
+jest.mock("@src/context/ExtensionStateContext", () => ({
 	useExtensionState: () => ({
 		apiConfiguration: {
 			apiProvider: "anthropic",
@@ -45,7 +52,7 @@ describe("TaskHeader", () => {
 				}}
 			/>,
 		)
-		expect(screen.getByText("$0.0500")).toBeInTheDocument()
+		expect(screen.getByText("$0.05")).toBeInTheDocument()
 	})
 
 	it("should not display cost when totalCost is 0", () => {

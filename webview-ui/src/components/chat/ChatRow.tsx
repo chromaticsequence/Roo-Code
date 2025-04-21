@@ -1,20 +1,18 @@
-import { VSCodeBadge, VSCodeButton, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react"
-import deepEqual from "fast-deep-equal"
 import React, { memo, useEffect, useMemo, useRef, useState } from "react"
 import { useSize } from "react-use"
-import { useCopyToClipboard } from "../../utils/clipboard"
 import { useTranslation, Trans } from "react-i18next"
-import { safeJsonParse } from "../../utils/json"
-import {
-	ClineApiReqInfo,
-	ClineAskUseMcpServer,
-	ClineMessage,
-	ClineSayTool,
-} from "../../../../src/shared/ExtensionMessage"
-import { COMMAND_OUTPUT_STRING } from "../../../../src/shared/combineCommandSequences"
-import { useExtensionState } from "../../context/ExtensionStateContext"
-import { findMatchingResourceOrTemplate } from "../../utils/mcp"
-import { vscode } from "../../utils/vscode"
+import deepEqual from "fast-deep-equal"
+import { VSCodeBadge, VSCodeButton, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react"
+
+import { Button } from "@/components/ui"
+
+import { useCopyToClipboard } from "@src/utils/clipboard"
+import { safeJsonParse } from "@src/utils/json"
+import { ClineApiReqInfo, ClineAskUseMcpServer, ClineMessage, ClineSayTool } from "@roo/shared/ExtensionMessage"
+import { COMMAND_OUTPUT_STRING } from "@roo/shared/combineCommandSequences"
+import { useExtensionState } from "@src/context/ExtensionStateContext"
+import { findMatchingResourceOrTemplate } from "@src/utils/mcp"
+import { vscode } from "@src/utils/vscode"
 import CodeAccordian, { removeLeadingNonAlphanumeric } from "../common/CodeAccordian"
 import CodeBlock, { CODE_BLOCK_BG_COLOR } from "../common/CodeBlock"
 import CommandOutputViewer from "../common/CommandOutputViewer"
@@ -25,7 +23,7 @@ import McpResourceRow from "../mcp/McpResourceRow"
 import McpToolRow from "../mcp/McpToolRow"
 import { highlightMentions } from "./TaskHeader"
 import { CheckpointSaved } from "./checkpoints/CheckpointSaved"
-import FollowUpSuggest from "./FollowUpSuggest"
+import { FollowUpSuggest } from "./FollowUpSuggest"
 
 interface ChatRowProps {
 	message: ClineMessage
@@ -230,7 +228,8 @@ export const ChatRowContent = ({
 				return [
 					<span
 						className="codicon codicon-question"
-						style={{ color: normalColor, marginBottom: "-1.5px" }}></span>,
+						style={{ color: normalColor, marginBottom: "-1.5px" }}
+					/>,
 					<span style={{ color: normalColor, fontWeight: "bold" }}>{t("chat:questions.hasQuestion")}</span>,
 				]
 			default:
@@ -285,6 +284,49 @@ export const ChatRowContent = ({
 									? t("chat:fileOperations.wantsToEditOutsideWorkspace")
 									: t("chat:fileOperations.wantsToEdit")}
 							</span>
+						</div>
+						<CodeAccordian
+							progressStatus={message.progressStatus}
+							isLoading={message.partial}
+							diff={tool.diff!}
+							path={tool.path!}
+							isExpanded={isExpanded}
+							onToggleExpand={onToggleExpand}
+						/>
+					</>
+				)
+			case "searchAndReplace":
+				return (
+					<>
+						<div className="flex items-center gap-2.5 mb-2.5">
+							{toolIcon("replace")}
+							<span className="font-bold">
+								{message.type === "ask"
+									? t("chat:fileOperations.wantsToSearchReplace")
+									: t("chat:fileOperations.didSearchReplace")}
+							</span>
+						</div>
+						<div className="mb-2.5">
+							<div className="flex items-center gap-2.5 mb-1.5">
+								<span className="text-vscode-descriptionForeground">Search:</span>
+								<code>{tool.search}</code>
+								{tool.useRegex && <span className="text-vscode-descriptionForeground">(regex)</span>}
+								{tool.ignoreCase && (
+									<span className="text-vscode-descriptionForeground">(case-insensitive)</span>
+								)}
+							</div>
+							<div className="flex items-center gap-2.5 mb-1.5">
+								<span className="text-vscode-descriptionForeground">Replace:</span>
+								<code>{tool.replace}</code>
+							</div>
+							{(tool.startLine !== undefined || tool.endLine !== undefined) && (
+								<div className="flex items-center gap-2.5">
+									<span className="text-vscode-descriptionForeground">Lines:</span>
+									<code>
+										{tool.startLine ?? 1} - {tool.endLine ?? "end"}
+									</code>
+								</div>
+							)}
 						</div>
 						<CodeAccordian
 							progressStatus={message.progressStatus}
@@ -795,39 +837,6 @@ export const ChatRowContent = ({
 											</>
 										)}
 									</p>
-
-									{/* {apiProvider === "" && (
-											<div
-												style={{
-													display: "flex",
-													alignItems: "center",
-													backgroundColor:
-														"color-mix(in srgb, var(--vscode-errorForeground) 20%, transparent)",
-													color: "var(--vscode-editor-foreground)",
-													padding: "6px 8px",
-													borderRadius: "3px",
-													margin: "10px 0 0 0",
-													fontSize: "12px",
-												}}>
-												<i
-													className="codicon codicon-warning"
-													style={{
-														marginRight: 6,
-														fontSize: 16,
-														color: "var(--vscode-errorForeground)",
-													}}></i>
-												<span>
-													Uh-oh, this could be a problem on end. We've been alerted and
-													will resolve this ASAP. You can also{" "}
-													<a
-														href=""
-														style={{ color: "inherit", textDecoration: "underline" }}>
-														contact us
-													</a>
-													.
-												</span>
-											</div>
-										)} */}
 								</>
 							)}
 
@@ -853,47 +862,19 @@ export const ChatRowContent = ({
 					)
 				case "user_feedback":
 					return (
-						<div
-							style={{
-								backgroundColor: "var(--vscode-badge-background)",
-								color: "var(--vscode-badge-foreground)",
-								borderRadius: "3px",
-								padding: "9px",
-								overflow: "hidden",
-								whiteSpace: "pre-wrap",
-								wordBreak: "break-word",
-								overflowWrap: "anywhere",
-							}}>
-							<div
-								style={{
-									display: "flex",
-									justifyContent: "space-between",
-									alignItems: "flex-start",
-									gap: "10px",
-								}}>
-								<span style={{ display: "block", flexGrow: 1, padding: "4px" }}>
-									{highlightMentions(message.text)}
-								</span>
-								<VSCodeButton
-									appearance="icon"
-									style={{
-										padding: "3px",
-										flexShrink: 0,
-										height: "24px",
-										marginTop: "-3px",
-										marginBottom: "-3px",
-										marginRight: "-6px",
-									}}
+						<div className="bg-vscode-editor-background border rounded-xs p-1 overflow-hidden whitespace-pre-wrap word-break-break-word overflow-wrap-anywhere">
+							<div className="flex justify-between gap-2">
+								<div className="flex-grow px-2 py-1">{highlightMentions(message.text)}</div>
+								<Button
+									variant="ghost"
+									size="icon"
 									disabled={isStreaming}
 									onClick={(e) => {
 										e.stopPropagation()
-										vscode.postMessage({
-											type: "deleteMessage",
-											value: message.ts,
-										})
+										vscode.postMessage({ type: "deleteMessage", value: message.ts })
 									}}>
-									<span className="codicon codicon-trash"></span>
-								</VSCodeButton>
+									<span className="codicon codicon-trash" />
+								</Button>
 							</div>
 							{message.images && message.images.length > 0 && (
 								<Thumbnails images={message.images} style={{ marginTop: "8px" }} />
